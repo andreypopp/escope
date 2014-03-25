@@ -872,8 +872,10 @@
         currentScope = null;
         globalScope = null;
 
+        var traverse = options.traverse || estraverse.traverse;
+
         // attach scope and collect / resolve names
-        estraverse.traverse(tree, {
+        traverse(tree, {
             enter: function enter(node) {
                 var i, iz, decl;
                 if (Scope.isScopeRequired(node)) {
