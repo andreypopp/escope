@@ -850,7 +850,7 @@
     };
 
     Scope.isVariableScopeRequired = function isVariableScopeRequired(node) {
-        return node.type === Syntax.Program || node.type === Syntax.FunctionExpression || node.type === Syntax.FunctionDeclaration || node.type === Syntax.ArrowFunctionExpression;
+        return node.type === Syntax.Program || node.type === Syntax.FunctionExpression || node.type === Syntax.FunctionDeclaration || node.type === Syntax.ArrowFunctionExpression || node.type === Syntax.ClassDeclaration;
     };
 
     /**
@@ -970,6 +970,13 @@
                     currentScope.__referencing(node.right);
                     break;
 
+                case Syntax.ClassDeclaration:
+                    currentScope.upper.__define(node.id, {
+                        type: Variable.FunctionName,
+                        name: node.id,
+                        node: node
+                    });
+                    break;
                 case Syntax.FunctionDeclaration:
                     // FunctionDeclaration name is defined in upper scope
                     currentScope.upper.__define(node.id, {
