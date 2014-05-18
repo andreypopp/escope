@@ -418,6 +418,7 @@
         this.type =
             (block.type === Syntax.CatchClause) ? 'catch' :
             (block.type === Syntax.WithStatement) ? 'with' :
+            (block.type === Syntax.MethodDefinition) ? 'method' :
             (block.type === Syntax.Program) ? 'global' : 'function';
          /**
          * The scoped {@link Variable}s of this scope, as <code>{ Variable.name
@@ -483,7 +484,7 @@
          * @member {Scope} Scope#variableScope
          */
         this.variableScope =
-            (this.type === 'global' || this.type === 'function') ? this : currentScope.variableScope;
+            (this.type === 'global' || this.type === 'function' || this.type === 'method') ? this : currentScope.variableScope;
          /**
          * Whether this scope is created by a FunctionExpression.
          * @member {boolean} Scope#functionExpressionScope
@@ -498,7 +499,7 @@
          * @member {boolean} Scope#thisFound
          */
         this.thisFound = false;
-        body = this.type === 'function' ? synthesizeBlock(block.body) : block;
+        body = this.type === 'function' ? synthesizeBlock(block.body) : this.type === 'method' ? synthesizeBlock(block.value.body) : block;
         if (opt.naming) {
             this.__define(block.id, {
                 type: Variable.FunctionName,
@@ -507,12 +508,19 @@
             });
             this.functionExpressionScope = true;
         } else {
-            if (this.type === 'function') {
+            if (this.type === 'function' || this.type === 'method') {
                 variable = new Variable('arguments', this);
                 this.taints.set('arguments', true);
                 this.set.set('arguments', variable);
                 this.variables.push(variable);
             }
+            if (this.type === 'method') {
+                variable = new Variable('super', this);
+                this.taints.set('super', true);
+                this.set.set('super', variable);
+                this.variables.push(variable);
+            }
+
 
             if (block.type === Syntax.FunctionExpression && block.id) {
                 new Scope(block, { naming: true });
@@ -732,7 +740,7 @@
         var variable;
 
         // This is not function scope
-        if (this.type !== 'function') {
+        if (this.type !== 'function' && this.type !== 'method') {
             return true;
         }
 
@@ -749,7 +757,7 @@
     // return this scope has materialized `this` reference
     Scope.prototype.isThisMaterialized = function isThisMaterialized() {
         // This is not function scope
-        if (this.type !== 'function') {
+        if (this.type !== 'function' && this.type !== 'method') {
             return true;
         }
         if (!this.isStatic()) {
@@ -850,7 +858,7 @@
     };
 
     Scope.isVariableScopeRequired = function isVariableScopeRequired(node) {
-        return node.type === Syntax.Program || node.type === Syntax.FunctionExpression || node.type === Syntax.FunctionDeclaration || node.type === Syntax.ArrowFunctionExpression || node.type === Syntax.ClassDeclaration;
+        return node.type === Syntax.Program || node.type === Syntax.FunctionExpression || node.type === Syntax.FunctionDeclaration || node.type === Syntax.ArrowFunctionExpression || node.type === Syntax.ClassDeclaration || node.type === Syntax.MethodDefinition;
     };
 
     /**
@@ -976,6 +984,8 @@
                         name: node.id,
                         node: node
                     });
+                    break;
+                case Syntax.MethodDefinition:
                     break;
                 case Syntax.FunctionDeclaration:
                     // FunctionDeclaration name is defined in upper scope
